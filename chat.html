@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Board</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            text-align: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .post-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 10px;
+        }
+        input, textarea, button, select {
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .post {
+            background: #ffffff;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            position: relative;
+            flex-direction: column;
+        }
+        .profile-pic {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #ddd;
+        }
+        .post-content {
+            flex-grow: 1;
+        }
+        .like-btn, .reply-btn {
+            background: #1877f2;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .reply-section {
+            display: none;
+            margin-top: 5px;
+        }
+        .topic-section {
+            margin-top: 20px;
+            padding: 10px;
+            background: #ffeb3b;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body onload="initializePage()">
+    <div class="container">
+        <h1>📝 Social Board</h1>
+        
+        <div class="topic-section">
+            <h3>📢 Topic of the Day</h3>
+            <input type="text" id="topic" placeholder="Set Topic of the Day" disabled>
+            <button onclick="setTopic()" id="setTopicBtn">Set Topic</button>
+        </div>
+
+        <div class="post-form">
+            <input type="text" id="username" placeholder="Enter your name (required)">
+            <input type="file" id="profilePicInput" accept="image/*">
+            <textarea id="thought" placeholder="What's on your mind?"></textarea>
+            <button onclick="addPost()">Post</button>
+        </div>
+        
+        <div id="posts"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKwpHcYjocnQo4gGtIBYmjaFpFDwo08GY",
+            authDomain: "social-board-77b7b.firebaseapp.com",
+            databaseURL: "https://social-board-77b7b-default-rtdb.firebaseio.com/",
+            projectId: "social-board-77b7b",
+            storageBucket: "social-board-77b7b.appspot.com",
+            messagingSenderId: "434445903061",
+            appId: "1:434445903061:web:156047981a14b4c34aee5c"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function initializePage() {
+            loadPosts();
+            loadTopic();
+        }
+
+        function addPost() {
+            let username = document.getElementById("username").value;
+            let profilePicInput = document.getElementById("profilePicInput").files[0];
+            const thought = document.getElementById("thought").value;
+            
+            if (!username) {
+                alert("Username is required!");
+                return;
+            }
+            if (!thought) {
+                alert("Please enter a thought!");
+                return;
+            }
+
+            let profilePicURL = "https://via.placeholder.com/50";
+            if (profilePicInput) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    profilePicURL = event.target.result;
+                    savePost(username, profilePicURL, thought);
+                };
+                reader.readAsDataURL(profilePicInput);
+            } else {
+                savePost(username, profilePicURL, thought);
+            }
+        }
+
+        function savePost(username, profilePicURL, thought) {
+            const postRef = database.ref("posts").push();
+            postRef.set({ username, profilePicURL, thought });
+        }
+
+        function loadPosts() {
+            const postContainer = document.getElementById("posts");
+            postContainer.innerHTML = "";
+            database.ref("posts").on("child_added", snapshot => {
+                const post = snapshot.val();
+                const postElement = document.createElement("div");
+                postElement.classList.add("post");
+                postElement.innerHTML = `
+                    <img src="${post.profilePicURL}" class="profile-pic">
+                    <div class="post-content">
+                        <strong>${post.username}</strong>
+                        <p>${post.thought}</p>
+                        <button class="like-btn">❤️ Like</button>
+                    </div>
+                `;
+                postContainer.appendChild(postElement);
+            });
+        }
+
+        function setTopic() {
+            const topicInput = document.getElementById("topic").value;
+            if (!topicInput) {
+                alert("Please enter a topic!");
+                return;
+            }
+            const today = new Date().toDateString();
+            database.ref("topic").set({ text: topicInput, date: today });
+            document.getElementById("setTopicBtn").disabled = true;
+        }
+
+        function loadTopic() {
+            database.ref("topic").on("value", snapshot => {
+                if (snapshot.exists()) {
+                    const topicData = snapshot.val();
+                    const today = new Date().toDateString();
+                    document.getElementById("topic").value = topicData.text;
+                    if (topicData.date === today) {
+                        document.getElementById("setTopicBtn").disabled = true;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
