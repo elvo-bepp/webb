@@ -92,8 +92,8 @@
         function addPost() {
             let username = document.getElementById("username").value;
             let profilePicInput = document.getElementById("profilePicInput").files[0];
-            const thought = document.getElementById("thought").value;
-            
+            let thought = document.getElementById("thought").value;
+
             if (!username) {
                 alert("Username is required!");
                 return;
